@@ -10,87 +10,129 @@ import java.util.Random;
 public class Maximin {
 
     private int num_points;
-    public ArrayList<Point> arr_points;
-    public ArrayList<Cluster> arr_clusters;
+    public ArrayList<Point> points;
+    public ArrayList<Cluster> clusters;
 
-    public Maximin(int num_points) {
+    private final int MAX_X;
+    private final int MAX_Y;
+
+    private Double maxDistance;
+    private Point newCentroid;
+
+    public Maximin(int num_points, int maxX, int maxY) {
+        MAX_X = maxX;
+        MAX_Y = maxY;
+
         this.num_points = num_points;
-        arr_points = getRandomPoints();
-
+        this.points = getRandomPoints();
         //          1
-        arr_clusters = new ArrayList<Cluster>();
-        createNewCluster(0);
 
+    }
+
+    public void search(){
+        this.clusters = new ArrayList<Cluster>();
+        CreateFirstCluster();
         //          2
-        calcDistances(arr_points, arr_clusters.get(0));
-        getNewCluster(arr_clusters);
+        createSecondCluster();
         //          3
-        // while (check()){
-        assignCluster();
-        //          4
-        for (Cluster cluster : arr_clusters) {
-            cluster.clearDistances();
-            calcDistances(cluster.getPoints(), cluster);
-            System.out.println(cluster.getMaxDistance());
+        while (true) {
+            clearClusters();
+            assignClusters();//3
+            if (!isSetNewCentroid())//4
+                break;
         }
-
-        getNewCluster(arr_clusters);
-        //} ;
-
     }
 
-    private boolean check() {
 
-        return true;
+    private boolean isSetNewCentroid() {
+        double totalDistance = 0;
+        ArrayList<Double> distances = new ArrayList<Double>();
+        calcMaxDistance();
+        for (int i = 0; i < clusters.size() - 1; i++) {
+            for (int j = 1; j < clusters.size(); j++) {
+                double currentDistance = getDistance(clusters.get(i).getCentroid(), clusters.get(j).getCentroid());
+                distances.add(currentDistance);
+                totalDistance += currentDistance;
+            }
+
+        }
+        if (maxDistance > totalDistance / distances.size() / 2) {
+            Cluster newCluster = new Cluster();
+            newCluster.setCentroid(newCentroid);
+            points.remove(points.indexOf(newCentroid));
+            clusters.add(newCluster);
+            return true;
+        }
+        return false;
     }
 
-    private void assignCluster() {
+    private void clearClusters() {
+        for (Cluster cluster : clusters) {
+            cluster.clear();
+        }
+    }
+
+    private void createSecondCluster() {
+        double max = Double.MIN_VALUE;
+        Point pointToCentroid = null;
+        double distance = 0.0;
+        Cluster cluster = clusters.get(0);
+        Point centroid = cluster.getCentroid();
+        for (Point point : points) {
+            distance = getDistance(point, centroid);
+            if (distance > max) {
+                max = distance;
+                pointToCentroid = point;
+            }
+        }
+        points.remove(points.indexOf(pointToCentroid));
+        Cluster newCluster = new Cluster();
+        newCluster.setCentroid(pointToCentroid);
+        clusters.add(newCluster);
+    }
+
+    private void calcMaxDistance() {
+        double max = Double.MIN_VALUE;
+        Point pointToCentroid = null;
+        double distance = 0.0;
+        for (Cluster cluster : clusters) {
+            Point centroid = cluster.getCentroid();
+            ArrayList<Point> points = cluster.getPoints();
+            for (Point point : points) {
+                distance = getDistance(point, centroid);
+                if (distance > max) {
+                    max = distance;
+                    pointToCentroid = point;
+                }
+            }
+        }
+        maxDistance = max;
+        newCentroid = pointToCentroid;
+    }
+
+    private void assignClusters() {
         int cluster = 0;
         double distance = 0;
-        for (Point point : arr_points) {
+        for (Point point : points) {
             double min = Double.MAX_VALUE;
-            for (int i = 0; i < arr_clusters.size(); i++) {
-                Cluster c = arr_clusters.get(i);
+            for (int i = 0; i < clusters.size(); i++) {
+                Cluster c = clusters.get(i);
                 distance = getDistance(point, c.getCentroid());
                 if (distance < min) {
                     min = distance;
                     cluster = i;
                 }
             }
-            arr_clusters.get(cluster).addPoint(point);
+            clusters.get(cluster).addPoint(point);
         }
     }
 
-    private void calcDistances(ArrayList<Point> points, Cluster cluster) {
-        double distance;
-        Point centroid = cluster.getCentroid();
-        for (Point point : points) {
-            distance = getDistance(point, centroid);
-            cluster.addDistance(distance);
-        }
-    }
-
-    private void getNewCluster(ArrayList<Cluster> clusters) {
-        ArrayList<Double> arr = clusters.get(0).getDistance();
-        double max = clusters.get(0).getMaxDistance();
-        if (clusters.size() >= 2) {
-            for (Cluster cluster : clusters) {
-                if (cluster.getMaxDistance() > max) {
-                    max = cluster.getMaxDistance();
-                    arr = cluster.getDistance();
-                }
-            }
-
-        }
-        createNewCluster(arr.indexOf(max));
-    }
-
-    private void createNewCluster(int index) {
+    private void CreateFirstCluster() {
         Cluster cluster = new Cluster();
-        Point centroid = arr_points.get(index);
+        Point centroid = points.get(0);
         cluster.setCentroid(centroid);
-        arr_clusters.add(cluster);
-        arr_points.remove(index);
+        clusters.add(cluster);
+        points.remove(0);
     }
 
     private double getDistance(Point point, Point centroid) {
@@ -103,8 +145,8 @@ public class Maximin {
         Random rand = new Random();
         ArrayList<Point> res = new ArrayList<Point>(num_points);
         for (int i = 0; i < num_points; i++) {
-            int x = rand.nextInt(640);
-            int y = rand.nextInt(480);
+            int x = rand.nextInt(MAX_X);
+            int y = rand.nextInt(MAX_Y);
             res.add(new Point(x, y));
         }
         return res;
